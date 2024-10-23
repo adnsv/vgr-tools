@@ -8,17 +8,9 @@ import (
 	"github.com/adnsv/svg"
 )
 
-// ImportSVGFile reads an SVG file and converts it into a VG structure.
-func ImportSVGFile(fn string) (*VG, error) {
-	data, err := os.ReadFile(fn)
-	if err != nil {
-		return nil, err
-	}
-	sg, err := svg.Parse(string(data))
-	if err != nil {
-		return nil, err
-	}
-	vg := &VG{Filename: fn}
+// ImportSVGFile imports SVG into VG.
+func ImportSVG(sg *svg.Svg, filename string) (*VG, error) {
+	vg := &VG{Filename: filename}
 
 	vb, err := sg.ViewBox.Parse()
 	if err != nil {
@@ -42,6 +34,20 @@ func ImportSVGFile(fn string) (*VG, error) {
 	readGroup(vg, &sg.Group, xform)
 
 	return vg, nil
+}
+
+// ImportSVGFile imports SVG file into VG.
+func ImportSVGFile(fn string) (*VG, error) {
+	data, err := os.ReadFile(fn)
+	if err != nil {
+		return nil, err
+	}
+	sg, err := svg.Parse(string(data))
+	if err != nil {
+		return nil, err
+	}
+
+	return ImportSVG(sg, fn)
 }
 
 func lengthPixels(l svg.Length, reflength *float64) (float64, error) {

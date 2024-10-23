@@ -2,6 +2,7 @@ package vgr
 
 import "encoding/binary"
 
+// Pack marshals VG into a binary BLOB suitable for reading by VGR C++ library.
 func Pack(src *VG) []byte {
 	vertex_scale := float64(10)
 
