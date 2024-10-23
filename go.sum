@@ -1,0 +1,4 @@
+github.com/adnsv/svg v0.0.4 h1:edxlx7rnnNG0ttblwjS7EdhFxTSerMbflt6iuEO+X2U=
+github.com/adnsv/svg v0.0.4/go.mod h1:qgB4/HU8IuBWJrgWjEgbYlCNhb+kXSBj3S9BJ5NKmBY=
+github.com/adnsv/xmlgo v0.1.0 h1:obKZIWbt856qe43SpFcsVVLHbg+OwrBkQ7gqQq1aZFQ=
+github.com/adnsv/xmlgo v0.1.0/go.mod h1:7ye/nrnYdZ2hKbXFXI7Y4R03Fc0gAAh40u3wVS70ekI=
