@@ -3,6 +3,7 @@ package vgr
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/adnsv/svg"
@@ -92,8 +93,6 @@ func readGroup(vg *VG, g *svg.Group, xform *svg.Transform) error {
 				return err
 			}
 
-		case *svg.Line:
-
 		case *svg.Rect:
 			err := readRect(vg, v, xform)
 			if err != nil {
@@ -123,6 +122,15 @@ func readGroup(vg *VG, g *svg.Group, xform *svg.Transform) error {
 			if err != nil {
 				return err
 			}
+
+		case *svg.Line:
+			err := readLine(vg, v, xform)
+			if err != nil {
+				return err
+			}
+
+		case *svg.Polyline:
+			// TODO: Polyline element support not yet implemented
 
 		default:
 			return errors.New("unsupported element tag")
@@ -393,6 +401,100 @@ func readPath(vg *VG, p *svg.Path, xform *svg.Transform) error {
 
 	vg.Fill(calcShapePaint(&p.Shape))
 
+	return nil
+}
+
+func readLine(vg *VG, l *svg.Line, xform *svg.Transform) error {
+	if id := l.ID(); id != "" {
+		vg.PushID(id)
+		defer vg.PopID()
+	}
+
+	var err error
+
+	// Get start and end points
+	start := svg.Vector{}
+	end := svg.Vector{}
+	start.X, err = lengthPixels(l.X1, &vg.ViewBox.Width)
+	if err != nil {
+		return err
+	}
+	start.Y, err = lengthPixels(l.Y1, &vg.ViewBox.Height)
+	if err != nil {
+		return err
+	}
+	end.X, err = lengthPixels(l.X2, &vg.ViewBox.Width)
+	if err != nil {
+		return err
+	}
+	end.Y, err = lengthPixels(l.Y2, &vg.ViewBox.Height)
+	if err != nil {
+		return err
+	}
+
+	// Calculate stroke width
+	width, err := lengthPixels(l.StrokeWidth, &vg.ViewBox.Height)
+	if err != nil {
+		return err
+	}
+	if width <= 0 {
+		width = 1.0
+	}
+	halfWidth := width / 2.0
+
+	// Calculate the line vector and its normal
+	dx := end.X - start.X
+	dy := end.Y - start.Y
+	length := math.Sqrt(dx*dx + dy*dy)
+	if length < 1e-6 {
+		return nil // Line too short, skip
+	}
+
+	// Normalize the vector
+	dx /= length
+	dy /= length
+
+	// Calculate normal vector (-dy, dx)
+	nx := -dy * halfWidth
+	ny := dx * halfWidth
+	normal := svg.Vector{X: nx, Y: ny}
+
+	lineCap := svg.LineCapRound
+	if l.StrokeLineCap != nil {
+		lineCap = *l.StrokeLineCap
+	}
+
+	// Create the path outline based on line cap style
+	switch lineCap {
+	case svg.LineCapRound:
+		vg.MoveTo(xform, svg.Sub(start, normal))
+		vg.Arc(xform, start, halfWidth, 0, math.Pi)
+		vg.LineTo(xform, svg.Sub(end, normal))
+		vg.Arc(xform, end, halfWidth, 0, math.Pi)
+		vg.LineTo(xform, svg.Add(start, normal))
+		vg.Close()
+
+	case svg.LineCapSquare:
+		// Square caps extend the line by half width
+		startCap := svg.Sub(start, svg.Mul(svg.Vector{X: dx, Y: dy}, halfWidth))
+		endCap := svg.Add(end, svg.Mul(svg.Vector{X: dx, Y: dy}, halfWidth))
+
+		vg.MoveTo(xform, svg.Sub(startCap, normal))
+		vg.LineTo(xform, svg.Sub(endCap, normal))
+		vg.LineTo(xform, svg.Add(endCap, normal))
+		vg.LineTo(xform, svg.Add(startCap, normal))
+		vg.Close()
+
+	case svg.LineCapButt:
+		// Butt caps end exactly at line endpoints
+		vg.MoveTo(xform, svg.Sub(start, normal))
+		vg.LineTo(xform, svg.Sub(end, normal))
+		vg.LineTo(xform, svg.Add(end, normal))
+		vg.LineTo(xform, svg.Add(start, normal))
+		vg.Close()
+	}
+
+	vg.Fill(calcShapePaint(&l.Shape))
 	return nil
 }
 
